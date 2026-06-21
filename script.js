@@ -4,11 +4,11 @@ const ctx = canvas.getContext('2d');
 /**
  * 
  * A number `c` is in the MANDELBROT set when:
- * Z_n+1 = Z_n + c
+ * Z_{n+1} = Z_n² + C
  * 
  * where, 
  *  Z_n = starting point
- *  Z_n+1 = next point
+ *  Z_{n+1} = next point
  *  c = set of all numbers (real and imaginary)
  * 
  */
