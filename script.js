@@ -1,4 +1,4 @@
-const canvas = document.getElementById('canvas');
+const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
 canvas.width = window.innerWidth;
@@ -10,6 +10,7 @@ const H = canvas.height;
 let zoom = 200;        
 let offsetX = -2.5;    
 let offsetY = -1.5;   
+const MAX_ITERATIONS = 100;
 
 /**
  *  MANDELBROT SET
@@ -18,6 +19,86 @@ let offsetY = -1.5;
  * where Z = a + bi (Z is a complex number)
  * 
  */
+
+function render() {
+  const imageData = ctx.createImageData(W, H);
+  const data = imageData.data;
+  let idx = 0;
+
+  // Loop pixels
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      // Map to complex plane
+      const cx = px / zoom + offsetX;
+      const cy = py / zoom + offsetY;
+      
+      let a = 0, b = 0;
+      let iter = 0;
+      
+      // The core loop, inlined for speed
+      while (iter < MAX_ITER) {
+        const aSq = a * a;
+        const bSq = b * b;
+        if (aSq + bSq > 4.0) break; // Escaped
+        
+        const newA = aSq - bSq + cx;
+        const newB = 2 * a * b + cy;
+        a = newA;
+        b = newB;
+        iter++;
+      }
+
+      // Colorize
+      let r, g, bColor;
+      if (iter === MAX_ITER) {
+        r = g = bColor = 0; // Black inside
+      } else {
+        // Smooth color mapping using trig functions
+        const v = iter / MAX_ITERATIONS;
+        r = 255 * (0.5 + 0.5 * Math.cos(v * 3.0));
+        g = 255 * (0.5 + 0.5 * Math.cos(v * 3.0 + 2.0));
+        bColor = 255 * (0.5 + 0.5 * Math.cos(v * 3.0 + 4.0));
+      }
+
+      data[idx] = r;
+      data[idx+1] = g;
+      data[idx+2] = bColor;
+      data[idx+3] = 255;
+      idx += 4;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// Zoom logic
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  
+  const mathX = mx / zoom + offsetX;
+  const mathY = my / zoom + offsetY;
+  
+  const factor = e.shiftKey ? 0.5 : 2.0;
+  zoom *= factor;
+  
+  offsetX = mathX - (mx / zoom);
+  offsetY = mathY - (my / zoom);
+  
+  render();
+});
+
+render();
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  // Recalculate dimensions for W/H (they are const, so we use let instead)
+  // To keep it simple, just reload the page manually or refresh the browser.
+  location.reload(); 
+});
+
 
 function getIterations(px, py) {
 
@@ -51,7 +132,6 @@ function getIterations(px, py) {
 
         iteration++;
     }
-
     return MAX_ITERATIONS;
 }
 
