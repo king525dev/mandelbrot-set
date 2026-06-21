@@ -1,6 +1,6 @@
 # The Mandelbrot Set
 
-Check out the [Live Demo](#) 
+Check out the [Live Demo](https://king525dev.github.io/mandelbrot-set/) 
 
 a mathematical object defined by a recursive formula:
 
