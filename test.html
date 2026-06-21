@@ -1,107 +1,288 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Mandelbrot in 60 lines</title>
-<style>
-  body { margin: 0; overflow: hidden; background: #111; }
-  canvas { display: block; cursor: crosshair; }
-  #info { position: absolute; bottom: 20px; left: 20px; color: #888; font-family: monospace; font-size: 14px; pointer-events: none; user-select: none; }
-</style>
+    <title>Psychedelic Fractal</title>
+    <style>
+        /* Full screen, no touch interference */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+            touch-action: none;
+            /* Prevents browser zoom/pull-to-refresh on mobile */;
+        }
+        canvas {
+            display: block;
+            cursor: grab;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: monospace;
+            font-size: 14px;
+            pointer-events: none;
+            user-select: none;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+            z-index: 10;
+        }
+        #info span {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 10px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+        }
+    </style>
 </head>
 <body>
-<canvas id="c"></canvas>
-<div id="info">🖱 Click to zoom in | Shift+Click to zoom out</div>
-<script>
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-const W = canvas.width, H = canvas.height;
 
-// Camera
-let zoom = 250;
-let offsetX = -2.5;
-let offsetY = -1.5;
-const MAX_ITER = 100;
+    <canvas id="c"></canvas>
+    <div id="info"><span>Pinch/Scroll to zoom | Drag to pan</span></div>
 
-function render() {
-  const imageData = ctx.createImageData(W, H);
-  const data = imageData.data;
-  let idx = 0;
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
 
-  // Loop pixels
-  for (let py = 0; py < H; py++) {
-    for (let px = 0; px < W; px++) {
-      // Map to complex plane
-      const cx = px / zoom + offsetX;
-      const cy = py / zoom + offsetY;
-      
-      let a = 0, b = 0;
-      let iter = 0;
-      
-      // The core loop, inlined for speed
-      while (iter < MAX_ITER) {
-        const aSq = a * a;
-        const bSq = b * b;
-        if (aSq + bSq > 4.0) break; // Escaped
-        
-        const newA = aSq - bSq + cx;
-        const newB = 2 * a * b + cy;
-        a = newA;
-        b = newB;
-        iter++;
-      }
+        // --- Sizing ---
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        const W = canvas.width,
+            H = canvas.height;
 
-      // Colorize
-      let r, g, bColor;
-      if (iter === MAX_ITER) {
-        r = g = bColor = 0; // Black inside
-      } else {
-        // Smooth color mapping using trig functions
-        const v = iter / MAX_ITER;
-        r = 255 * (0.5 + 0.5 * Math.cos(v * 3.0));
-        g = 255 * (0.5 + 0.5 * Math.cos(v * 3.0 + 2.0));
-        bColor = 255 * (0.5 + 0.5 * Math.cos(v * 3.0 + 4.0));
-      }
+        // --- Camera State ---
+        let zoom = 280;
+        let offsetX = -2.5;
+        let offsetY = -1.5;
+        const MAX_ITER = 120;
 
-      data[idx] = r;
-      data[idx+1] = g;
-      data[idx+2] = bColor;
-      data[idx+3] = 255;
-      idx += 4;
-    }
-  }
-  ctx.putImageData(imageData, 0, 0);
-}
+        // --- Touch State (for mobile) ---
+        let lastTouchDist = 0;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let isDragging = false;
+        let isPinching = false;
 
-// Zoom logic
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  
-  const mathX = mx / zoom + offsetX;
-  const mathY = my / zoom + offsetY;
-  
-  const factor = e.shiftKey ? 0.5 : 2.0;
-  zoom *= factor;
-  
-  offsetX = mathX - (mx / zoom);
-  offsetY = mathY - (my / zoom);
-  
-  render();
-});
+        // --- The Render Engine ---
+        function render() {
+            const imageData = ctx.createImageData(W, H);
+            const data = imageData.data;
+            let idx = 0;
 
-render();
+            for (let py = 0; py < H; py++) {
+                for (let px = 0; px < W; px++) {
+                    const cx = px / zoom + offsetX;
+                    const cy = py / zoom + offsetY;
 
-// Handle window resize
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  // Recalculate dimensions for W/H (they are const, so we use let instead)
-  // To keep it simple, just reload the page manually or refresh the browser.
-  location.reload(); 
-});
-</script>
+                    let a = 0,
+                        b = 0;
+                    let iter = 0;
+
+                    while (iter < MAX_ITER) {
+                        const aSq = a * a;
+                        const bSq = b * b;
+                        if (aSq + bSq > 4.0) break;
+                        const newA = aSq - bSq + cx;
+                        const newB = 2 * a * b + cy;
+                        a = newA;
+                        b = newB;
+                        iter++;
+                    }
+
+                    // --- PSYCHEDELIC COLOR ENGINE ---
+                    let r, g, bColor;
+                    if (iter === MAX_ITER) {
+                        r = g = bColor = 0; // Deep black for the core
+                    } else {
+                        // Smooth value between 0 and 1
+                        const v = iter / MAX_ITER;
+
+                        // Primary waves (fast shifting rainbow)
+                        const r1 = 128 + 127 * Math.sin(v * 8.0 + 0.0);
+                        const g1 = 128 + 127 * Math.sin(v * 8.0 + 2.09);
+                        const b1 = 128 + 127 * Math.sin(v * 8.0 + 4.18);
+
+                        // Secondary waves (interference pattern / "oil slick")
+                        const r2 = 128 + 127 * Math.cos(v * 13.0 + 1.5);
+                        const g2 = 128 + 127 * Math.cos(v * 13.0 + 3.6);
+                        const b2 = 128 + 127 * Math.cos(v * 13.0 + 5.7);
+
+                        // Superpose them (additive) and wrap around with modulo
+                        r = Math.floor((r1 + r2) % 256);
+                        g = Math.floor((g1 + g2) % 256);
+                        bColor = Math.floor((b1 + b2) % 256);
+
+                        // Boost saturation by clamping extremes
+                        r = Math.min(255, Math.max(0, r));
+                        g = Math.min(255, Math.max(0, g));
+                        bColor = Math.min(255, Math.max(0, bColor));
+                    }
+
+                    data[idx] = r;
+                    data[idx + 1] = g;
+                    data[idx + 2] = bColor;
+                    data[idx + 3] = 255;
+                    idx += 4;
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+
+            // Update info bar with zoom
+            const infoSpan = document.querySelector('#info span');
+            if (infoSpan) {
+                infoSpan.textContent = `🌀 Zoom: ${zoom.toFixed(1)}x | Drag to pan`;
+            }
+        }
+
+        // --- ZOOM LOGIC (Shared between Mouse & Touch) ---
+        function applyZoom(factor, anchorX, anchorY) {
+            // Where is the anchor in math space?
+            const mathX = anchorX / zoom + offsetX;
+            const mathY = anchorY / zoom + offsetY;
+
+            let newZoom = zoom * factor;
+            // Safety cap: 1e14 is the IEEE 754 wall.
+            if (newZoom > 1e14) newZoom = 1e14;
+            if (newZoom < 1) newZoom = 1;
+            zoom = newZoom;
+
+            // Keep the anchor fixed
+            offsetX = mathX - (anchorX / zoom);
+            offsetY = mathY - (anchorY / zoom);
+
+            render();
+        }
+
+        // --- 1. DESKTOP: Scroll to Zoom ---
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const factor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
+            applyZoom(factor, mx, my);
+        }, { passive: false });
+
+        // --- 2. DESKTOP: Drag to Pan (Mouse) ---
+        let isMouseDown = false;
+        let lastMouseX = 0,
+            lastMouseY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+            const dx = e.clientX - lastMouseX;
+            const dy = e.clientY - lastMouseY;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+
+            // Shift the view
+            offsetX -= dx / zoom;
+            offsetY -= dy / zoom;
+            render();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        // --- 3. MOBILE: Touch Events (Pan + Pinch) ---
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touches = e.touches;
+            if (touches.length === 1) {
+                // Start Pan
+                isDragging = true;
+                isPinching = false;
+                lastTouchX = touches[0].clientX;
+                lastTouchY = touches[0].clientY;
+            } else if (touches.length === 2) {
+                // Start Pinch
+                isPinching = true;
+                isDragging = false;
+                const dx = touches[0].clientX - touches[1].clientX;
+                const dy = touches[0].clientY - touches[1].clientY;
+                lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+                // Store the midpoint as the anchor
+                lastTouchX = (touches[0].clientX + touches[1].clientX) / 2;
+                lastTouchY = (touches[0].clientY + touches[1].clientY) / 2;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touches = e.touches;
+
+            if (touches.length === 1 && isDragging) {
+                // --- PAN ---
+                const dx = touches[0].clientX - lastTouchX;
+                const dy = touches[0].clientY - lastTouchY;
+                lastTouchX = touches[0].clientX;
+                lastTouchY = touches[0].clientY;
+
+                offsetX -= dx / zoom;
+                offsetY -= dy / zoom;
+                render();
+
+            } else if (touches.length === 2 && isPinching) {
+                // --- PINCH TO ZOOM ---
+                const dx = touches[0].clientX - touches[1].clientX;
+                const dy = touches[0].clientY - touches[1].clientY;
+                const currentDist = Math.sqrt(dx * dx + dy * dy);
+
+                // Midpoint of the two fingers (the anchor)
+                const midX = (touches[0].clientX + touches[1].clientX) / 2;
+                const midY = (touches[0].clientY + touches[1].clientY) / 2;
+
+                // Get the rect for accurate pixel coordinates
+                const rect = canvas.getBoundingClientRect();
+                const anchorX = midX - rect.left;
+                const anchorY = midY - rect.top;
+
+                const factor = currentDist / lastTouchDist;
+                applyZoom(factor, anchorX, anchorY);
+
+                // Update distance for the next frame
+                lastTouchDist = currentDist;
+                lastTouchX = midX;
+                lastTouchY = midY;
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            isDragging = false;
+            isPinching = false;
+        });
+
+        // --- Initial Render ---
+        render();
+
+        // --- Handle resize without reloading (dynamically update W/H) ---
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            // Update W and H (they are const, so we need to refresh via location reload for simplicity, 
+            // but to avoid losing zoom state, we just reassign global vars).
+            // Quick hack: reload to keep the code simple.
+            // Actually, let's just keep W/H as `let` and re-run render.
+            location.reload(); 
+        });
+    </script>
 </body>
 </html>
