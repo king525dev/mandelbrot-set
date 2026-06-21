@@ -21,7 +21,7 @@ If `Z` runs away to infinity, `C` is outside (colored based on how fast it escap
 while (iter < MAX_ITER) {
     const aSq = a * a;
     const bSq = b * b;
-    if (aSq + bSq > 4.0) break;      // Escaped!
+    if (aSq + bSq > 4.0) break;      // Not in Set
     const newA = aSq - bSq + cx;     // Real part
     const newB = 2 * a * b + cy;     // Imaginary part
     a = newA;
