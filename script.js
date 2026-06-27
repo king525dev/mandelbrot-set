@@ -67,7 +67,6 @@ const PALETTES = [
             if (iter === maxIter) return { r: 0, g: 0, b: 0 };
             const v = iter / maxIter;
             const brightness = Math.floor(255 * (1 - v * v));
-            // Teal tint: #5BA8A0
             return {
                 r: Math.floor(brightness * 0.36),
                 g: Math.floor(brightness * 0.66),
@@ -119,10 +118,24 @@ const PALETTES = [
                 b: Math.floor(128 + (b - 128) * 0.6)
             };
         }
+    },
+    {
+        name: 'Optimised',
+        fn: (iter, maxIter) => {
+            if (iter === maxIter) return { r: 0, g: 0, b: 0 };
+            // Simple linear mapping: v goes from 0 to 1 as iter goes 0 → maxIter
+            const v = iter / maxIter;
+            // Fast: no sin/cos, just simple multiplication.
+            // Warm gradient: black → amber → yellow → white.
+            const r = Math.floor(255 * v);
+            const g = Math.floor(200 * v * v);      // Squared for a non-linear falloff
+            const b = Math.floor(120 * v * v * v);  // Cubed for a steep drop-off
+            return { r, g, b };
+        }
     }
 ];
 
-let currentPaletteIndex = 0;
+let currentPaletteIndex = 1;
 
 // --- The Render Engine ---
 function render() {
@@ -164,7 +177,7 @@ function render() {
 
     const infoSpan = document.querySelector('#info span');
     if (infoSpan) {
-        infoSpan.textContent = `Zoom: ${zoom.toFixed(1)}x | Drag to pan`;
+        infoSpan.textContent = `Zoom: ${zoom.toFixed(1)}x | Drag to pan | ${PALETTES[currentPaletteIndex].name}`;
     }
 }
 
