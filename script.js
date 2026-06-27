@@ -36,11 +36,100 @@ let lastTouchY = 0;
 let isDragging = false;
 let isPinching = false;
 
+// ============================================================
+//  COLOR PALETTES
+// ============================================================
+const PALETTES = [
+    {
+        name: 'Psychedelic',
+        fn: (iter, maxIter) => {
+            if (iter === maxIter) return { r: 0, g: 0, b: 0 };
+            const v = iter / maxIter;
+            const r1 = 128 + 127 * Math.sin(v * 8.0 + 0.0);
+            const g1 = 128 + 127 * Math.sin(v * 8.0 + 2.09);
+            const b1 = 128 + 127 * Math.sin(v * 8.0 + 4.18);
+            const r2 = 128 + 127 * Math.cos(v * 13.0 + 1.5);
+            const g2 = 128 + 127 * Math.cos(v * 13.0 + 3.6);
+            const b2 = 128 + 127 * Math.cos(v * 13.0 + 5.7);
+            let r = Math.floor((r1 + r2) % 256);
+            let g = Math.floor((g1 + g2) % 256);
+            let b = Math.floor((b1 + b2) % 256);
+            return {
+                r: Math.min(255, Math.max(0, r)),
+                g: Math.min(255, Math.max(0, g)),
+                b: Math.min(255, Math.max(0, b))
+            };
+        }
+    },
+    {
+        name: 'Monochrome (Teal)',
+        fn: (iter, maxIter) => {
+            if (iter === maxIter) return { r: 0, g: 0, b: 0 };
+            const v = iter / maxIter;
+            const brightness = Math.floor(255 * (1 - v * v));
+            // Teal tint: #5BA8A0
+            return {
+                r: Math.floor(brightness * 0.36),
+                g: Math.floor(brightness * 0.66),
+                b: Math.floor(brightness * 0.63)
+            };
+        }
+    },
+    {
+        name: 'Fire',
+        fn: (iter, maxIter) => {
+            if (iter === maxIter) return { r: 0, g: 0, b: 0 };
+            const v = iter / maxIter;
+            const r = Math.floor(255 * (1 - Math.exp(-v * 4)));
+            const g = Math.floor(255 * (1 - Math.exp(-v * 2)));
+            const b = Math.floor(255 * (1 - Math.exp(-v * 0.8)));
+            return {
+                r: Math.min(255, r),
+                g: Math.min(255, g * 0.5),
+                b: Math.min(255, b * 0.2)
+            };
+        }
+    },
+    {
+        name: 'Ocean (Blue/Cyan)',
+        fn: (iter, maxIter) => {
+            if (iter === maxIter) return { r: 0, g: 0, b: 0 };
+            const v = iter / maxIter;
+            const r = 128 + 127 * Math.sin(v * 6.0 + 1.2);
+            const g = 128 + 127 * Math.sin(v * 6.0 + 0.5);
+            const b = 128 + 127 * Math.sin(v * 8.0 + 0.0);
+            return {
+                r: Math.floor(Math.max(0, r * 0.3)),
+                g: Math.floor(Math.min(255, g)),
+                b: Math.floor(Math.min(255, b * 1.2))
+            };
+        }
+    },
+    {
+        name: 'Pastel',
+        fn: (iter, maxIter) => {
+            if (iter === maxIter) return { r: 0, g: 0, b: 0 };
+            const v = iter / maxIter;
+            const r = 128 + 127 * Math.sin(v * 5.0 + 0.0);
+            const g = 128 + 127 * Math.sin(v * 5.0 + 2.0);
+            const b = 128 + 127 * Math.sin(v * 5.0 + 4.0);
+            return {
+                r: Math.floor(128 + (r - 128) * 0.6),
+                g: Math.floor(128 + (g - 128) * 0.6),
+                b: Math.floor(128 + (b - 128) * 0.6)
+            };
+        }
+    }
+];
+
+let currentPaletteIndex = 0;
+
 // --- The Render Engine ---
 function render() {
     const imageData = ctx.createImageData(W, H);
     const data = imageData.data;
     let idx = 0;
+    const palette = PALETTES[currentPaletteIndex].fn;
 
     for (let py = 0; py < H; py++) {
         for (let px = 0; px < W; px++) {
@@ -62,33 +151,11 @@ function render() {
                 iter++;
             }
 
-            // --- COLOR ENGINE ---
-            let r, g, bColor;
-            if (iter === MAX_ITER) {
-                r = g = bColor = 0;
-            } else {
-                const v = iter / MAX_ITER;
+            const color = palette(iter, MAX_ITER);
 
-                const r1 = 128 + 127 * Math.sin(v * 8.0 + 0.0);
-                const g1 = 128 + 127 * Math.sin(v * 8.0 + 2.09);
-                const b1 = 128 + 127 * Math.sin(v * 8.0 + 4.18);
-
-                const r2 = 128 + 127 * Math.cos(v * 13.0 + 1.5);
-                const g2 = 128 + 127 * Math.cos(v * 13.0 + 3.6);
-                const b2 = 128 + 127 * Math.cos(v * 13.0 + 5.7);
-
-                r = Math.floor((r1 + r2) % 256);
-                g = Math.floor((g1 + g2) % 256);
-                bColor = Math.floor((b1 + b2) % 256);
-
-                r = Math.min(255, Math.max(0, r));
-                g = Math.min(255, Math.max(0, g));
-                bColor = Math.min(255, Math.max(0, bColor));
-            }
-
-            data[idx] = r;
-            data[idx + 1] = g;
-            data[idx + 2] = bColor;
+            data[idx] = color.r;
+            data[idx + 1] = color.g;
+            data[idx + 2] = color.b;
             data[idx + 3] = 255;
             idx += 4;
         }
@@ -158,19 +225,16 @@ canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const touches = e.touches;
     if (touches.length === 1) {
-
         isDragging = true;
         isPinching = false;
         lastTouchX = touches[0].clientX;
         lastTouchY = touches[0].clientY;
     } else if (touches.length === 2) {
-
         isPinching = true;
         isDragging = false;
         const dx = touches[0].clientX - touches[1].clientX;
         const dy = touches[0].clientY - touches[1].clientY;
         lastTouchDist = Math.sqrt(dx * dx + dy * dy);
-
         lastTouchX = (touches[0].clientX + touches[1].clientX) / 2;
         lastTouchY = (touches[0].clientY + touches[1].clientY) / 2;
     }
@@ -181,7 +245,6 @@ canvas.addEventListener('touchmove', (e) => {
     const touches = e.touches;
 
     if (touches.length === 1 && isDragging) {
-       
         const dx = touches[0].clientX - lastTouchX;
         const dy = touches[0].clientY - lastTouchY;
         lastTouchX = touches[0].clientX;
@@ -192,22 +255,16 @@ canvas.addEventListener('touchmove', (e) => {
         render();
 
     } else if (touches.length === 2 && isPinching) {
-        
         const dx = touches[0].clientX - touches[1].clientX;
         const dy = touches[0].clientY - touches[1].clientY;
         const currentDist = Math.sqrt(dx * dx + dy * dy);
-
-        
         const midX = (touches[0].clientX + touches[1].clientX) / 2;
         const midY = (touches[0].clientY + touches[1].clientY) / 2;
-
         const rect = canvas.getBoundingClientRect();
         const anchorX = midX - rect.left;
         const anchorY = midY - rect.top;
-
         const factor = currentDist / lastTouchDist;
         applyZoom(factor, anchorX, anchorY);
-
         lastTouchDist = currentDist;
         lastTouchX = midX;
         lastTouchY = midY;
@@ -219,6 +276,17 @@ canvas.addEventListener('touchend', (e) => {
     isPinching = false;
 });
 
+// --- Palette Toggle ---
+const toggleBtn = document.getElementById('paletteToggle');
+
+function cyclePalette() {
+    currentPaletteIndex = (currentPaletteIndex + 1) % PALETTES.length;
+    toggleBtn.textContent = `🎨 ${PALETTES[currentPaletteIndex].name}`;
+    render();
+}
+
+toggleBtn.addEventListener('click', cyclePalette);
+
 // --- Initial Render ---
 render();
 
@@ -226,6 +294,5 @@ render();
 window.addEventListener('resize', () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    
-    location.reload(); 
+    location.reload();
 });
